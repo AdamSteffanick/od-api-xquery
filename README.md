@@ -1,8 +1,8 @@
 # Oxford Dictionaries API XQuery
-Make requests to the Oxford Dictionaries API with XQuery.
+Make requests to the Oxford Dictionaries API with XQuery and get responses in well-formed XML.
 
 ## Documentation
-- Use od-api.xquery as a template
+- Use od-api.xquery as a template to help you get started
  - Replace *myId* and *myKey* with your own API credentials (**do not upload your API credentials to GitHub**)
 
 ## Versions
