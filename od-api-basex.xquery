@@ -109,7 +109,8 @@ declare function od-api:arrayofstrings($nodes as node()*) as item()* {
 
 (: # Thesaurus functions :)
 (: ## Thesaurus :)
-declare function od-api:thesaurus($source_lang as xs:string, $word_id as xs:string, $operation as xs:string, $id as xs:string, $key as xs:string) {
+declare function od-api:thesaurus($source_lang as xs:string, $word-id as xs:string, $operation as xs:string, $id as xs:string, $key as xs:string) {
+  let $word_id := fn:encode-for-uri(fn:lower-case(fn:translate($word-id, " ", "_")))
   let $request :=
   <http:request href="https://od-api.oxforddictionaries.com/api/v1/entries/{$source_lang}/{$word_id}/{$operation}" method="get">
     <http:header name="app_key" value="{$key}"/>
