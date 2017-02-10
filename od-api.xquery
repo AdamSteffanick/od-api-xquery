@@ -20,8 +20,8 @@ let $lemmatron := od-api:lemmatron($source-lang, ?, $lemmatron-filters, $id, $ke
 let $thesaurus := od-api:thesaurus($source-lang, ?, $thesaurus-operation, $id, $key)
 
 (: # Example queries
-return $lemmatron("changed")
+return $lemmatron("change")
 return $thesaurus("ace")
 :)
 
-return $lemmatron("changed")
+return $lemmatron("change")
