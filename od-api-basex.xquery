@@ -10,6 +10,23 @@ declare function od-api:option($fragment as item()*, $function as xs:string) as 
   (: ### General arrays :)
   if ($fragment and $function = "arrayofstrings") then
     od-api:arrayofstrings($fragment)
+  (: ### Lemmatron arrays :)
+  else if ($fragment and $function = "headwordLemmatron") then
+    element {"results"} {
+      for $result in $fragment/_
+      return od-api:headwordLemmatron($result)
+    }
+  else if ($fragment/fn:name() = "grammaticalFeatures" and $function = "lemmatronInlineModel1") then
+    element {"grammaticalFeatures"} {
+      for $grammaticalFeature in $fragment/_
+      return od-api:lemmatronInlineModel1($grammaticalFeature, "grammaticalFeature")
+    }
+  else if ($fragment/fn:name() = "inflectionOf" and $function = "lemmatronInlineModel2") then
+    element {"inflectionOf"} {
+      for $wordform in $fragment/_
+      order by $wordform/text
+      return od-api:lemmatronInlineModel2($wordform, "wordform")
+    }
   (: ### Thesaurus arrays :)
   else if ($fragment and $function = "headwordThesaurus") then
     element {"results"} {
@@ -107,15 +124,75 @@ declare function od-api:arrayofstrings($nodes as node()*) as item()* {
   default return $node
 };
 
+(: # Lemmatron functions :)
+(: ## Lemmatron :)
+declare function od-api:lemmatron($source_lang as xs:string, $word-id as xs:string, $filter as xs:string, $id as xs:string, $key as xs:string) {
+  let $word_id := fn:encode-for-uri(fn:lower-case(fn:translate($word-id, " ", "_")))
+  let $filters :=
+    if ($filter) then
+      fn:concat("/", $filter)
+    else ()
+  let $request :=
+    <http:request href="https://od-api.oxforddictionaries.com/api/v1/inflections/{$source_lang}/{$word_id}{$filters}" method="get">
+      <http:header name="app_key" value="{$key}"/>
+      <http:header name="app_id" value="{$id}"/>
+    </http:request>
+  let $response := http:send-request($request)
+  return
+  element {"lemmatron"} {
+    attribute {"input"} {$word_id},
+    attribute {"language"} {$source_lang},
+    od-api:metadata($response),
+    od-api:option($response/json/results, "headwordLemmatron")
+  }
+};
+(: ## HeadwordLemmatron :)
+declare function od-api:headwordLemmatron($result as node()*) as item()* {
+  element {"result"} {
+    $result/id,
+    $result/language,
+    $result/type,
+    $result/word,
+    element {"lexicalEntries"} {
+      for $lexicalEntry in $result/lexicalEntries/_
+      return od-api:lemmatronLexicalEntry($lexicalEntry)
+    }
+  }
+};
+(: ## LemmatronLexicalEntry :)
+declare function od-api:lemmatronLexicalEntry($lexicalEntry as node()*) as item()* {
+  element {"lexicalEntry"} {
+    $lexicalEntry/language,
+    $lexicalEntry/lexicalCategory,
+    $lexicalEntry/text,
+    od-api:option($lexicalEntry/grammaticalFeatures, "lemmatronInlineModel1"),
+    od-api:option($lexicalEntry/inflectionOf, "lemmatronInlineModel2")
+  }
+};
+(: ## GrammaticalFeaturesList :)
+declare function od-api:lemmatronInlineModel1($fragment as node()*, $element as xs:string) as item()* {
+  element {$element} {
+    $fragment/text,
+    $fragment/type
+  }
+};
+(: ## InflectionsList :)
+declare function od-api:lemmatronInlineModel2($fragment as node()*, $element as xs:string) as item()* {
+  element {$element} {
+    $fragment/id,
+    $fragment/text
+  }
+};
+
 (: # Thesaurus functions :)
 (: ## Thesaurus :)
 declare function od-api:thesaurus($source_lang as xs:string, $word-id as xs:string, $operation as xs:string, $id as xs:string, $key as xs:string) {
   let $word_id := fn:encode-for-uri(fn:lower-case(fn:translate($word-id, " ", "_")))
   let $request :=
-  <http:request href="https://od-api.oxforddictionaries.com/api/v1/entries/{$source_lang}/{$word_id}/{$operation}" method="get">
-    <http:header name="app_key" value="{$key}"/>
-    <http:header name="app_id" value="{$id}"/>
-  </http:request>
+    <http:request href="https://od-api.oxforddictionaries.com/api/v1/entries/{$source_lang}/{$word_id}/{$operation}" method="get">
+      <http:header name="app_key" value="{$key}"/>
+      <http:header name="app_id" value="{$id}"/>
+    </http:request>
   let $response := http:send-request($request)
   return
   element {"thesaurus"} {
