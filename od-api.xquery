@@ -11,7 +11,7 @@ let $key := "myKey"
 (: # Options :)
 let $source-lang := "en"
 (: ## Dictionary :)
-let $dictionary-filters := "definitions" (: "regions=gb", "lexicalCategory=noun", "definitions", "examples", or "pronunciations" :)
+let $dictionary-filters := "" (: "regions=gb", "lexicalCategory=noun", "definitions", "examples", or "pronunciations" :)
 (: ## Lemmatron :)
 let $lemmatron-filters := "" (: "lexicalCategory=noun" :)
 (: ## Thesaurus :)
