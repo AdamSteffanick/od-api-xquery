@@ -414,6 +414,26 @@ declare function od-api:lemmatronInlineModel2($fragment as node()*, $element as 
   }
 };
 
+(: # Translation functions :)
+(: ## Translation :)
+declare function od-api:translation($source_lang as xs:string, $word-id as xs:string, $target_lang as xs:string, $id as xs:string, $key as xs:string) {
+  let $word_id := fn:encode-for-uri(fn:lower-case(fn:translate($word-id, " ", "_")))
+  let $request :=
+    <http:request href="https://od-api.oxforddictionaries.com/api/v1/entries/{$source_lang}/{$word_id}/translations={$target_lang}" method="get">
+      <http:header name="app_key" value="{$key}"/>
+      <http:header name="app_id" value="{$id}"/>
+    </http:request>
+  let $response := http:send-request($request)
+  return
+  element {"translation"} {
+    attribute {"input"} {$word_id},
+    attribute {"language"} {$source_lang},
+    attribute {"target-language"} {$target_lang},
+    od-api:metadata($response),
+    od-api:option($response/json/results, "headwordEntry")
+  }
+};
+
 (: # Thesaurus functions :)
 (: ## Thesaurus :)
 declare function od-api:thesaurus($source_lang as xs:string, $word-id as xs:string, $operation as xs:string, $id as xs:string, $key as xs:string) {

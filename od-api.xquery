@@ -14,12 +14,15 @@ let $source-lang := "en"
 let $dictionary-filters := "" (: "regions=gb", "lexicalCategory=noun", "definitions", "examples", or "pronunciations" :)
 (: ## Lemmatron :)
 let $lemmatron-filters := "" (: "lexicalCategory=noun" :)
+(: ## Translation :)
+let $target-lang := "es"
 (: ## Thesaurus :)
 let $thesaurus-operation := "synonyms;antonyms" (: "synonyms", "antonyms", or "synonyms;antonyms" :)
 
 (: # Partial function applications :)
 let $dictionary := od-api:dictionary($source-lang, ?, $dictionary-filters, $id, $key)
 let $lemmatron := od-api:lemmatron($source-lang, ?, $lemmatron-filters, $id, $key)
+let $translation := od-api:translation($source-lang, ?, $target-lang, $id, $key)
 let $thesaurus := od-api:thesaurus($source-lang, ?, $thesaurus-operation, $id, $key)
 
 (: # Example queries
@@ -28,4 +31,4 @@ return $lemmatron("change")
 return $thesaurus("ace")
 :)
 
-return $dictionary("ace")
+return $translation("change")
