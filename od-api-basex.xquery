@@ -47,7 +47,7 @@ declare function od-api:option($fragment as item()*, $function as xs:string) as 
       for $entry in $fragment/_
       return od-api:entry($entry)
     }
-  else if ($fragment/fn:name() = "senses" or "subsenses" and $function = "sense") then
+  else if (($fragment/fn:name() = "senses" or "subsenses") and $function = "sense") then
     if ($fragment/fn:name() = "senses") then
       element {"senses"} {
         for $sense in $fragment/_
@@ -124,7 +124,7 @@ declare function od-api:option($fragment as item()*, $function as xs:string) as 
       for $entry in $fragment/_
       return od-api:thesaurusEntry($entry)
     }
-  else if ($fragment/fn:name() = "senses" or "subsenses" and $function = "thesaurusSense") then
+  else if (($fragment/fn:name() = "senses" or "subsenses") and $function = "thesaurusSense") then
     if ($fragment/fn:name() = "senses") then
       element {"senses"} {
         for $sense in $fragment/_
@@ -143,7 +143,7 @@ declare function od-api:option($fragment as item()*, $function as xs:string) as 
       order by $variantForm/text
       return od-api:thesaurusInlineModel1($variantForm, "variantForm")
     }
-  else if ($fragment/fn:name() = "synonyms" or "antonyms" and $function = "thesaurusInlineModel2") then
+  else if (($fragment/fn:name() = "synonyms" or "antonyms") and $function = "thesaurusInlineModel2") then
       if ($fragment/fn:name() = "synonyms") then
         element {"synonyms"} {
           for $synonym in $fragment/_

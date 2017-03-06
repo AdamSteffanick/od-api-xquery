@@ -12,6 +12,9 @@ Make requests to the Oxford Dictionaries API and return XML with XQuery.
  - [Retrieve Oxford Dictionaries API Thesaurus Data as XML with XQuery and BaseX](https://www.steffanick.com/adam/blog/retrieve-oxford-dictionaries-api-thesaurus-data-as-xml-with-xquery/)
 
 ## Versions
+### 0.4.1
+- Fixed complex logical expressions in `od-api:option` (*od-api-basex.xquery*)
+
 ### 0.4.0
 - Added API 1.5.0 translation functions (*od-api-basex.xquery*)
 - Added translation template (*od-api.xquery*)
