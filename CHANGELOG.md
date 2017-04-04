@@ -53,7 +53,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 [0.4.0]: https://github.com/AdamSteffanick/od-api-xquery/compare/v0.3.1...v0.4.0
 [0.3.0]: https://github.com/AdamSteffanick/od-api-xquery/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/AdamSteffanick/od-api-xquery/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/AdamSteffanick/od-api-xquery/compare/c87ee07...v0.1.0
+[0.1.0]: https://github.com/AdamSteffanick/od-api-xquery/compare/d27effd...v0.1.0
 [Initial commit]: https://github.com/AdamSteffanick/od-api-xquery/commit/d27effd83e44e2e0d2bc33aea0f59137a5d8562b
 [CHANGELOG.md]: ./CHANGELOG.md
 [LISENCE]: https://github.com/AdamSteffanick/od-api-xquery/blob/master/LICENSE
