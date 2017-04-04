@@ -6,6 +6,7 @@ Make requests to the [Oxford Dictionaries API] and return XML with XQuery.
 
 ## Documentation
 For BaseX and [Oxford Dictionaries API] v1.6.0, import the function library [od-api-basex.xquery] v0.5.0:
+
 `import module namespace od-api="od-api-basex" at "https://raw.githubusercontent.com/AdamSteffanick/od-api-xquery/v0.5.0/od-api-basex.xquery";`
 
 * Fork or download this repository if you prefer to use your own copy of the function library (*i.e.*, [od-api-basex.xquery])
