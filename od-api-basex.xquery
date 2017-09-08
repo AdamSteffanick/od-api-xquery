@@ -2,7 +2,15 @@ xquery version "3.1" encoding "UTF-8";
 
 module namespace od-api = "od-api-basex";
 
-(: https://github.com/AdamSteffanick/od-api-xquery :)
+(:~
+ : A library module for the Oxford Dictionaries API.
+ :
+ : @author Adam Steffanick
+ : https://www.steffanick.com/adam/
+ : @version v0.6.0
+ : https://github.com/AdamSteffanick/od-api-xquery
+ : September 8, 2017
+ :)
 
 (:
 MIT License
@@ -28,10 +36,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 :)
 
-(: # API v1.6.0 :)
-(: # OD-API-XQuery v0.5.0 :)
+(: # API v1.8.0 :)
 
 (: # General functions :)
+(: ## Add metadata :)
+declare function od-api:metadata($response as item()*) as item()* {
+  let $metadata := $response/json/metadata
+  let $date := $response[1]/*[fn:name()="http:header"][@name="Date"]/@value/fn:string()
+  let $version := "v0.6.0"
+  return element {"metadata"} {
+    $metadata/node(),
+    element {"od_api_xquery"} {$version},
+    element {"date"} {$date}
+  }
+};
 (: ## Create elements for optional fragment arrays :)
 declare function od-api:option($fragment as item()*, $function as xs:string) as item()* {
   (: ### General arrays :)
@@ -41,6 +59,23 @@ declare function od-api:option($fragment as item()*, $function as xs:string) as 
     element {"notes"} {
       for $note in $fragment/_
       return od-api:CategorizedTextList($note, "note")
+    }
+  (: ### Lemmatron arrays :)
+  else if ($fragment and $function = "headwordLemmatron") then
+    element {"results"} {
+      for $result in $fragment/_
+      return od-api:headwordLemmatron($result)
+    }
+  else if ($fragment/fn:name() = "grammaticalFeatures" and $function = "lemmatronGrammaticalFeaturesList") then
+    element {"grammaticalFeatures"} {
+      for $grammaticalFeature in $fragment/_
+      return od-api:lemmatronGrammaticalFeaturesList($grammaticalFeature, "grammaticalFeature")
+    }
+  (: ### Dictionary :)
+  else if ($fragment and $function = "dictionaryCategorizedTextList") then
+    element {"notes"} {
+      for $note in $fragment/_
+      return od-api:dictionaryCategorizedTextList($note, "note")
     }
   (: ### Dictionary arrays :)
   else if ($fragment and $function = "headwordEntry") then
@@ -92,10 +127,10 @@ declare function od-api:option($fragment as item()*, $function as xs:string) as 
       order by $variantForm/text
       return od-api:dictionaryVariantFormsList($variantForm, "variantForm")
     }
-  else if ($fragment/fn:name() = "crossReferences" and $function = "dictionaryInlineModel4") then
+  else if ($fragment/fn:name() = "crossReferences" and $function = "dictionaryCrossReferencesList") then
     element {"crossReferences"} {
       for $crossReference in $fragment/_
-      return od-api:dictionaryInlineModel4($crossReference, "crossReference")
+      return od-api:dictionaryCrossReferencesList($crossReference, "crossReference")
     }
   else if ($fragment/fn:name() = "examples" and $function = "dictionaryExamplesList") then
     element {"examples"} {
@@ -107,22 +142,11 @@ declare function od-api:option($fragment as item()*, $function as xs:string) as 
       for $translation in $fragment/_
       return od-api:dictionaryTranslationsList($translation, "translation")
     }
-  (: ### Lemmatron arrays :)
-  else if ($fragment and $function = "headwordLemmatron") then
-    element {"results"} {
-      for $result in $fragment/_
-      return od-api:headwordLemmatron($result)
-    }
-  else if ($fragment/fn:name() = "grammaticalFeatures" and $function = "lemmatronGrammaticalFeaturesList") then
-    element {"grammaticalFeatures"} {
-      for $grammaticalFeature in $fragment/_
-      return od-api:lemmatronGrammaticalFeaturesList($grammaticalFeature, "grammaticalFeature")
-    }
-  else if ($fragment/fn:name() = "inflectionOf" and $function = "lemmatronInflectionsList") then
-    element {"inflectionOf"} {
-      for $wordform in $fragment/_
-      order by $wordform/text
-      return od-api:lemmatronInflectionsList($wordform, "wordform")
+  (: ### Thesaurus :)
+  else if ($fragment and $function = "thesaurusCategorizedTextList") then
+    element {"notes"} {
+      for $note in $fragment/_
+      return od-api:thesaurusCategorizedTextList($note, "note")
     }
   (: ### Thesaurus arrays :)
   else if ($fragment and $function = "headwordThesaurus") then
@@ -184,18 +208,7 @@ declare function od-api:option($fragment as item()*, $function as xs:string) as 
     }
   else ()
 };
-(: ## Add metadata :)
-declare function od-api:metadata($response as item()*) as item()* {
-  let $metadata := $response/json/metadata
-  let $date := $response[1]/*[fn:name()="http:header"][@name="Date"]/@value/fn:string()
-  let $version := "v0.5.0"
-  return element {"metadata"} {
-    $metadata/node(),
-    element {"od_api_xquery"} {$version},
-    element {"date"} {$date}
-  }
-};
-(: CategorizedTextList :)
+(: CategorizedTextList :) (: deprecated :)
 declare function od-api:CategorizedTextList($fragment as node()*, $element as xs:string) as item()* {
   element {$element} {
     od-api:option($fragment/id, "arrayofstrings"),
@@ -243,7 +256,71 @@ declare function od-api:arrayofstrings($nodes as node()*) as item()* {
   default return $node
 };
 
-(: # Dictionary functions [API v1.6.0] :)
+(: # Lemmatron functions [API v1.8.0] :)
+(: ## Lemmatron :)
+declare function od-api:lemmatron($source_lang as xs:string, $word-id as xs:string, $filter as xs:string, $id as xs:string, $key as xs:string) {
+  let $word_id := fn:encode-for-uri(fn:lower-case(fn:translate($word-id, " ", "_")))
+  let $filters :=
+    if ($filter) then
+      fn:concat("/", $filter)
+    else ()
+  let $request :=
+    <http:request href="https://od-api.oxforddictionaries.com/api/v1/inflections/{$source_lang}/{$word_id}{$filters}" method="get">
+      <http:header name="app_key" value="{$key}"/>
+      <http:header name="app_id" value="{$id}"/>
+    </http:request>
+  let $response := http:send-request($request)
+  return
+  element {"lemmatron"} {
+    attribute {"input"} {$word_id},
+    attribute {"language"} {$source_lang},
+    od-api:metadata($response),
+    od-api:option($response/json/results, "headwordLemmatron")
+  }
+};
+(: ## HeadwordLemmatron :)
+declare function od-api:headwordLemmatron($result as node()*) as item()* {
+  element {"result"} {
+    $result/id,
+    $result/language,
+    element {"lexicalEntries"} {
+      for $lexicalEntry in $result/lexicalEntries/_
+      return od-api:lemmatronLexicalEntry($lexicalEntry)
+    },
+    $result/type,
+    $result/word
+  }
+};
+(: ## LemmatronLexicalEntry :)
+declare function od-api:lemmatronLexicalEntry($lexicalEntry as node()*) as item()* {
+  element {"lexicalEntry"} {
+    od-api:option($lexicalEntry/grammaticalFeatures, "lemmatronGrammaticalFeaturesList"),
+    od-api:lemmatronInflectionsList($lexicalEntry/inflectionOf),
+    $lexicalEntry/language,
+    $lexicalEntry/lexicalCategory,
+    $lexicalEntry/text
+  }
+};
+(: ## GrammaticalFeaturesList :)
+declare function od-api:lemmatronGrammaticalFeaturesList($fragment as node()*, $element as xs:string) as item()* {
+  element {$element} {
+    $fragment/text,
+    $fragment/type
+  }
+};
+(: ## InflectionsList :)
+declare function od-api:lemmatronInflectionsList($inflectionOf as node()*) as item()* {
+  element {"inflectionOf"} {
+    for $wordform in $inflectionOf/_
+    order by $wordform/text
+    return element {"wordform"} {
+      $wordform/id,
+      $wordform/text
+    }
+  }
+};
+
+(: # Dictionary functions [API v1.8.0] :)
 (: ## Dictionary :)
 declare function od-api:dictionary($source_lang as xs:string, $word-id as xs:string, $filter as xs:string, $id as xs:string, $key as xs:string) {
   let $word_id := fn:encode-for-uri(fn:lower-case(fn:translate($word-id, " ", "_")))
@@ -270,27 +347,27 @@ declare function od-api:headwordEntry($result as node()*) as item()* {
   element {"result"} {
     $result/id,
     $result/language,
-    $result/type,
-    $result/word,
-    od-api:option($result/pronunciations, "dictionaryPronunciationsList"),
     element {"lexicalEntries"} {
       for $lexicalEntry in $result/lexicalEntries/_
       return od-api:lexicalEntry($lexicalEntry)
-    }
+    },
+    od-api:option($result/pronunciations, "dictionaryPronunciationsList"),
+    $result/type,
+    $result/word
   }
 };
 (: ## lexicalEntry :)
 declare function od-api:lexicalEntry($lexicalEntry as node()*) as item()* {
   element {"lexicalEntry"} {
+    od-api:option($lexicalEntry/derivativeOf, "ArrayOfRelatedEntries"),
+    od-api:option($lexicalEntry/entries, "entry"),
+    od-api:option($lexicalEntry/grammaticalFeatures, "dictionaryGrammaticalFeaturesList"),
     $lexicalEntry/language,
     $lexicalEntry/lexicalCategory,
-    $lexicalEntry/text,
-    od-api:option($lexicalEntry/derivativeOf, "ArrayOfRelatedEntries"),
-    od-api:option($lexicalEntry/notes, "CategorizedTextList"),
+    od-api:option($lexicalEntry/notes, "dictionaryCategorizedTextList"),
     od-api:option($lexicalEntry/pronunciations, "dictionaryPronunciationsList"),
-    od-api:option($lexicalEntry/grammaticalFeatures, "dictionaryGrammaticalFeaturesList"),
-    od-api:option($lexicalEntry/variantForms, "dictionaryVariantFormsList"),
-    od-api:option($lexicalEntry/entries, "entry")
+    $lexicalEntry/text,
+    od-api:option($lexicalEntry/variantForms, "dictionaryVariantFormsList")
   }
 };
 (: ## PronunciationsList :)
@@ -320,15 +397,23 @@ declare function od-api:entry($entry as node()*) as item()* {
     od-api:option($entry/etymologies, "arrayofstrings"),
     od-api:option($entry/grammaticalFeatures, "dictionaryGrammaticalFeaturesList"),
     $entry/homographNumber,
-    od-api:option($entry/notes, "CategorizedTextList"),
+    od-api:option($entry/notes, "dictionaryCategorizedTextList"),
     od-api:option($entry/pronunciations, "dictionaryPronunciationsList"),
-    od-api:option($entry/variantForms, "dictionaryVariantFormsList"),
-    od-api:option($entry/senses, "sense")
+    od-api:option($entry/senses, "sense"),
+    od-api:option($entry/variantForms, "dictionaryVariantFormsList")
   }
 };
 (: ## GrammaticalFeaturesList :)
 declare function od-api:dictionaryGrammaticalFeaturesList($fragment as node()*, $element as xs:string) as item()* {
   element {$element} {
+    $fragment/text,
+    $fragment/type
+  }
+};
+(: CategorizedTextList :)
+declare function od-api:dictionaryCategorizedTextList($fragment as node()*, $element as xs:string) as item()* {
+  element {$element} {
+    $fragment/id,
     $fragment/text,
     $fragment/type
   }
@@ -344,22 +429,22 @@ declare function od-api:dictionaryVariantFormsList($fragment as node()*, $elemen
 declare function od-api:sense($sense as node()*, $element as xs:string) as item()* {
   element {$element} {
     od-api:option($sense/crossReferenceMarkers, "arrayofstrings"),
-    od-api:option($sense/crossReferences, "arrayofstrings"),
+    od-api:option($sense/crossReferences, "dictionaryCrossReferencesList"),
     od-api:option($sense/definitions, "arrayofstrings"),
     od-api:option($sense/domains, "arrayofstrings"),
     od-api:option($sense/examples, "dictionaryExamplesList"),
     $sense/id,
-    od-api:option($sense/notes, "CategorizedTextList"),
+    od-api:option($sense/notes, "dictionaryCategorizedTextList"),
     od-api:option($sense/pronunciations, "dictionaryPronunciationsList"),
     od-api:option($sense/regions, "arrayofstrings"),
     od-api:option($sense/registers, "arrayofstrings"),
-    od-api:option($sense/variantForms, "dictionaryVariantFormsList"),
+    od-api:option($sense/subsenses, "sense"),
     od-api:option($sense/translations, "dictionaryTranslationsList"),
-    od-api:option($sense/subsenses, "sense")
+    od-api:option($sense/variantForms, "dictionaryVariantFormsList")
   }
 };
 (: ## CrossReferencesList :)
-declare function od-api:dictionaryInlineModel4($fragment as node()*, $element as xs:string) as item()* {
+declare function od-api:dictionaryCrossReferencesList($fragment as node()*, $element as xs:string) as item()* {
   element {$element} {
     $fragment/id,
     $fragment/text,
@@ -371,7 +456,7 @@ declare function od-api:dictionaryExamplesList($fragment as node()*, $element as
   element {$element} {
     od-api:option($fragment/definitions, "arrayofstrings"),
     od-api:option($fragment/domains, "arrayofstrings"),
-    od-api:option($fragment/notes, "CategorizedTextList"),
+    od-api:option($fragment/notes, "dictionaryCategorizedTextList"),
     od-api:option($fragment/regions, "arrayofstrings"),
     od-api:option($fragment/registers, "arrayofstrings"),
     od-api:option($fragment/senseIds, "arrayofstrings"),
@@ -385,94 +470,14 @@ declare function od-api:dictionaryTranslationsList($fragment as node()*, $elemen
     od-api:option($fragment/domains, "arrayofstrings"),
     od-api:option($fragment/grammaticalFeatures, "dictionaryGrammaticalFeaturesList"),
     $fragment/language,
-    od-api:option($fragment/notes, "CategorizedTextList"),
+    od-api:option($fragment/notes, "dictionaryCategorizedTextList"),
     od-api:option($fragment/regions, "arrayofstrings"),
     od-api:option($fragment/registers, "arrayofstrings"),
     $fragment/text
   }
 };
 
-(: # Lemmatron functions [API v1.6.0] :)
-(: ## Lemmatron :)
-declare function od-api:lemmatron($source_lang as xs:string, $word-id as xs:string, $filter as xs:string, $id as xs:string, $key as xs:string) {
-  let $word_id := fn:encode-for-uri(fn:lower-case(fn:translate($word-id, " ", "_")))
-  let $filters :=
-    if ($filter) then
-      fn:concat("/", $filter)
-    else ()
-  let $request :=
-    <http:request href="https://od-api.oxforddictionaries.com/api/v1/inflections/{$source_lang}/{$word_id}{$filters}" method="get">
-      <http:header name="app_key" value="{$key}"/>
-      <http:header name="app_id" value="{$id}"/>
-    </http:request>
-  let $response := http:send-request($request)
-  return
-  element {"lemmatron"} {
-    attribute {"input"} {$word_id},
-    attribute {"language"} {$source_lang},
-    od-api:metadata($response),
-    od-api:option($response/json/results, "headwordLemmatron")
-  }
-};
-(: ## HeadwordLemmatron :)
-declare function od-api:headwordLemmatron($result as node()*) as item()* {
-  element {"result"} {
-    $result/id,
-    $result/language,
-    $result/type,
-    $result/word,
-    element {"lexicalEntries"} {
-      for $lexicalEntry in $result/lexicalEntries/_
-      return od-api:lemmatronLexicalEntry($lexicalEntry)
-    }
-  }
-};
-(: ## LemmatronLexicalEntry :)
-declare function od-api:lemmatronLexicalEntry($lexicalEntry as node()*) as item()* {
-  element {"lexicalEntry"} {
-    $lexicalEntry/language,
-    $lexicalEntry/lexicalCategory,
-    $lexicalEntry/text,
-    od-api:option($lexicalEntry/grammaticalFeatures, "lemmatronGrammaticalFeaturesList"),
-    od-api:option($lexicalEntry/inflectionOf, "lemmatronInflectionsList")
-  }
-};
-(: ## GrammaticalFeaturesList :)
-declare function od-api:lemmatronGrammaticalFeaturesList($fragment as node()*, $element as xs:string) as item()* {
-  element {$element} {
-    $fragment/text,
-    $fragment/type
-  }
-};
-(: ## InflectionsList :)
-declare function od-api:lemmatronInflectionsList($fragment as node()*, $element as xs:string) as item()* {
-  element {$element} {
-    $fragment/id,
-    $fragment/text
-  }
-};
-
-(: # Translation functions [API v1.6.0] :)
-(: ## Translation :)
-declare function od-api:translation($source_lang as xs:string, $word-id as xs:string, $target_lang as xs:string, $id as xs:string, $key as xs:string) {
-  let $word_id := fn:encode-for-uri(fn:lower-case(fn:translate($word-id, " ", "_")))
-  let $request :=
-    <http:request href="https://od-api.oxforddictionaries.com/api/v1/entries/{$source_lang}/{$word_id}/translations={$target_lang}" method="get">
-      <http:header name="app_key" value="{$key}"/>
-      <http:header name="app_id" value="{$id}"/>
-    </http:request>
-  let $response := http:send-request($request)
-  return
-  element {"translation"} {
-    attribute {"input"} {$word_id},
-    attribute {"language"} {$source_lang},
-    attribute {"target-language"} {$target_lang},
-    od-api:metadata($response),
-    od-api:option($response/json/results, "headwordEntry")
-  }
-};
-
-(: # Thesaurus functions [API v1.6.0] :)
+(: # Thesaurus functions [API v1.8.0] :)
 (: ## Thesaurus :)
 declare function od-api:thesaurus($source_lang as xs:string, $word-id as xs:string, $operation as xs:string, $id as xs:string, $key as xs:string) {
   let $word_id := fn:encode-for-uri(fn:lower-case(fn:translate($word-id, " ", "_")))
@@ -495,43 +500,30 @@ declare function od-api:headwordThesaurus($result as node()*) as item()* {
   element {"result"} {
     $result/id,
     $result/language,
-    $result/type,
-    $result/word,
     element {"lexicalEntries"} {
       for $lexicalEntry in $result/lexicalEntries/_
       return od-api:thesaurusLexicalEntry($lexicalEntry)
-    }
+    },
+    $result/type,
+    $result/word
   }
 };
 (: ## ThesaurusLexicalEntry :)
 declare function od-api:thesaurusLexicalEntry($lexicalEntry as node()*) as item()* {
   element {"lexicalEntry"} {
+    od-api:option($lexicalEntry/entries, "thesaurusEntry"),
     $lexicalEntry/language,
     $lexicalEntry/lexicalCategory,
     $lexicalEntry/text,
-    od-api:option($lexicalEntry/variantForms, "thesaurusVariantFormsList"),
-    od-api:option($lexicalEntry/entries, "thesaurusEntry")
+    od-api:option($lexicalEntry/variantForms, "thesaurusVariantFormsList")
   }
 };
 (: ## ThesaurusEntry :)
 declare function od-api:thesaurusEntry($entry as node()*) as item()* {
   element {"entry"} {
     $entry/homographNumber,
-    od-api:option($entry/variantForms, "thesaurusVariantFormsList"),
-    od-api:option($entry/senses, "thesaurusSense")
-  }
-};
-(: ## ThesaurusSense :)
-declare function od-api:thesaurusSense($sense as node()*, $element as xs:string) as item()* {
-  element {$element} {
-    od-api:option($sense/domains, "arrayofstrings"),
-    od-api:option($sense/examples, "thesaurusExamplesList"),
-    $sense/id,
-    od-api:option($sense/regions, "arrayofstrings"),
-    od-api:option($sense/registers, "arrayofstrings"),
-    od-api:option($sense/synonyms, "thesaurusSynonymsAntonyms"),
-    od-api:option($sense/antonyms, "thesaurusSynonymsAntonyms"),
-    od-api:option($sense/subsenses, "thesaurusSense")
+    od-api:option($entry/senses, "thesaurusSense"),
+    od-api:option($entry/variantForms, "thesaurusVariantFormsList")
   }
 };
 (: ## VariantFormsList :)
@@ -539,6 +531,19 @@ declare function od-api:thesaurusVariantFormsList($fragment as node()*, $element
   element {$element} {
     od-api:option($fragment/regions, "arrayofstrings"),
     $fragment/text
+  }
+};
+(: ## ThesaurusSense :)
+declare function od-api:thesaurusSense($sense as node()*, $element as xs:string) as item()* {
+  element {$element} {
+    od-api:option($sense/antonyms, "thesaurusSynonymsAntonyms"),
+    od-api:option($sense/domains, "arrayofstrings"),
+    od-api:option($sense/examples, "thesaurusExamplesList"),
+    $sense/id,
+    od-api:option($sense/regions, "arrayofstrings"),
+    od-api:option($sense/registers, "arrayofstrings"),
+    od-api:option($sense/subsenses, "thesaurusSense"),
+    od-api:option($sense/synonyms, "thesaurusSynonymsAntonyms")
   }
 };
 (: ## SynonymsAntonyms :)
@@ -557,12 +562,20 @@ declare function od-api:thesaurusExamplesList($fragment as node()*, $element as 
   element {$element} {
     od-api:option($fragment/definitions, "arrayofstrings"),
     od-api:option($fragment/domains, "arrayofstrings"),
-    od-api:option($fragment/notes, "CategorizedTextList"),
+    od-api:option($fragment/notes, "thesaurusCategorizedTextList"),
     od-api:option($fragment/regions, "arrayofstrings"),
     od-api:option($fragment/registers, "arrayofstrings"),
     od-api:option($fragment/senseIds, "arrayofstrings"),
     $fragment/text,
     od-api:option($fragment/translations, "thesaurusTranslationsList")
+  }
+};
+(: CategorizedTextList :)
+declare function od-api:thesaurusCategorizedTextList($fragment as node()*, $element as xs:string) as item()* {
+  element {$element} {
+    $fragment/id,
+    $fragment/text,
+    $fragment/type
   }
 };
 (: ## TranslationsList :)
@@ -571,7 +584,7 @@ declare function od-api:thesaurusTranslationsList($fragment as node()*, $element
     od-api:option($fragment/domains, "arrayofstrings"),
     od-api:option($fragment/grammaticalFeatures, "thesaurusGrammaticalFeaturesList"),
     $fragment/language,
-    od-api:option($fragment/notes, "CategorizedTextList"),
+    od-api:option($fragment/notes, "thesaurusCategorizedTextList"),
     od-api:option($fragment/regions, "arrayofstrings"),
     od-api:option($fragment/registers, "arrayofstrings"),
     $fragment/text
@@ -582,5 +595,25 @@ declare function od-api:thesaurusGrammaticalFeaturesList($fragment as node()*, $
   element {$element} {
     $fragment/text,
     $fragment/type
+  }
+};
+
+(: # Translation functions [API v1.8.0] :)
+(: ## Translation :)
+declare function od-api:translation($source_lang as xs:string, $word-id as xs:string, $target_lang as xs:string, $id as xs:string, $key as xs:string) {
+  let $word_id := fn:encode-for-uri(fn:lower-case(fn:translate($word-id, " ", "_")))
+  let $request :=
+    <http:request href="https://od-api.oxforddictionaries.com/api/v1/entries/{$source_lang}/{$word_id}/translations={$target_lang}" method="get">
+      <http:header name="app_key" value="{$key}"/>
+      <http:header name="app_id" value="{$id}"/>
+    </http:request>
+  let $response := http:send-request($request)
+  return
+  element {"translation"} {
+    attribute {"input"} {$word_id},
+    attribute {"language"} {$source_lang},
+    attribute {"target-language"} {$target_lang},
+    od-api:metadata($response),
+    od-api:option($response/json/results, "headwordEntry")
   }
 };

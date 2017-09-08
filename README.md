@@ -1,13 +1,16 @@
-# Oxford Dictionaries API XQuery [![version](https://img.shields.io/badge/od--api--xquery-v0.5.0-0038e2.svg?style=flat-square)][CHANGELOG]
+# Oxford Dictionaries API XQuery
+
+[![version][version-badge]][CHANGELOG] [![license][license-badge]][LICENSE]
+
 Make requests to the [Oxford Dictionaries API] and return XML with XQuery.
 
 ## Download
 * [**Latest release**](https://github.com/AdamSteffanick/od-api-xquery/releases/latest)
 
 ## Documentation
-For BaseX and [Oxford Dictionaries API] v1.6.0, import the function library [od-api-basex.xquery] v0.5.0:
+For BaseX and [Oxford Dictionaries API] v1.8.0, import the function library [od-api-basex.xquery] v0.6.0:
 
-`import module namespace od-api="od-api-basex" at "https://raw.githubusercontent.com/AdamSteffanick/od-api-xquery/v0.5.0/od-api-basex.xquery";`
+`import module namespace od-api="od-api-basex" at "https://raw.githubusercontent.com/AdamSteffanick/od-api-xquery/v0.6.0/od-api-basex.xquery";`
 
 * Fork or download this repository if you prefer to use your own copy of the function library (*i.e.*, [od-api-basex.xquery])
 * Use [od-api.xquery] as a template to help you get started
@@ -19,9 +22,12 @@ For BaseX and [Oxford Dictionaries API] v1.6.0, import the function library [od-
   * [Retrieve Oxford Dictionaries API Thesaurus Data as XML with XQuery and BaseX](https://www.steffanick.com/adam/blog/retrieve-oxford-dictionaries-api-thesaurus-data-as-xml-with-xquery/)
 
 ## Features
-* [Oxford Dictionaries API] v1.6.0 compatible
+* [Oxford Dictionaries API] v1.8.0 compatible
 
 [CHANGELOG]: ./CHANGELOG.md
+[version-badge]: https://img.shields.io/badge/od--api--xquery-v0.6.0-0038e2.svg?style=flat-square
+[LICENSE]: ./LICENSE
+[license-badge]: https://img.shields.io/badge/license-MIT-0038e2.svg?style=flat-square
 [od-api.xquery]: ./od-api.xquery
 [od-api-basex.xquery]: ./od-api-basex.xquery
 

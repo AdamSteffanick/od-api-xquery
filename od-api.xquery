@@ -2,7 +2,7 @@ xquery version "3.1" encoding "UTF-8";
 
 (: # Modules :)
 (: ## BaseX :)
-import module namespace od-api="od-api-basex" at "https://raw.githubusercontent.com/AdamSteffanick/od-api-xquery/v0.5.0/od-api-basex.xquery";
+import module namespace od-api="od-api-basex" at "https://raw.githubusercontent.com/AdamSteffanick/od-api-xquery/v0.6.0/od-api-basex.xquery";
 
 (: # API credentials :)
 let $id := "myId"
